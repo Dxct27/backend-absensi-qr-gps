@@ -33,21 +33,29 @@ class QrcodeController extends Controller
 
         $qrcode = new Qrcode($validatedData);
 
-        $stringToHash = $qrcode->opd_id . $qrcode->name . now()->timestamp;
-        $qrcode->value = hash('sha256', $stringToHash);
+        // Hashing all relevant fields
+        $stringToHash = implode('|', [
+            $qrcode->opd_id,
+            $qrcode->name,
+            $qrcode->latitude,
+            $qrcode->longitude,
+            $qrcode->radius,
+            $qrcode->waktu_awal,
+            $qrcode->waktu_akhir,
+            now()->timestamp
+        ]);
 
+        $qrcode->value = hash('sha256', $stringToHash);
         $qrcode->save();
 
         return response()->json($qrcode, 201);
     }
-
 
     public function show(Qrcode $qrcode)
     {
         $qrcode->load('opd');
         return response()->json($qrcode);
     }
-
 
     public function update(Request $request, Qrcode $qrcode)
     {
@@ -67,19 +75,27 @@ class QrcodeController extends Controller
 
         $qrcode->update($validatedData);
 
-        $stringToHash = $qrcode->opd_id . $qrcode->name . now()->timestamp;
-        $qrcode->value = hash('sha256', $stringToHash);
+        // Hashing with updated data
+        $stringToHash = implode('|', [
+            $qrcode->opd_id,
+            $qrcode->name,
+            $qrcode->latitude,
+            $qrcode->longitude,
+            $qrcode->radius,
+            $qrcode->waktu_awal,
+            $qrcode->waktu_akhir,
+            now()->timestamp
+        ]);
 
+        $qrcode->value = hash('sha256', $stringToHash);
         $qrcode->save();
 
         return response()->json($qrcode);
     }
 
-
     public function destroy(Qrcode $qrcode)
     {
         $qrcode->delete();
-
         return response()->json(null, 204);
     }
 }

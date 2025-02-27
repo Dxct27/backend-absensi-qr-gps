@@ -17,7 +17,7 @@ Route::middleware(['jwt.auth'])->group(function () {
     Route::post('/auth/logout', [JWTAuthController::class, 'logout']);
     Route::get('/user', [JWTAuthController::class, 'getUser']); // Fix the /api/user route
 
-    Route::apiResource('/qrcode', QrcodeController::class);
+    Route::apiResource('/qrcodes', QrcodeController::class);
     Route::apiResource('/opd', OpdController::class);
     Route::apiResource('/attendance', AttendanceController::class);
 });

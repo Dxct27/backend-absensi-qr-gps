@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use Tymon\JWTAuth\Exceptions\JWTException;
+use Tymon\JWTAuth\Exceptions\TokenExpiredException;
+use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Laravel\Socialite\Facades\Socialite;
 
@@ -56,19 +58,30 @@ class JWTAuthController extends Controller
     }
 
     public function getUser()
-    {
-        try {
-            $user = JWTAuth::parseToken()->authenticate();
+{
+    try {
+        $user = JWTAuth::parseToken()->authenticate();
 
-            if (!$user) {
-                return response()->json(['error' => 'User not found'], 404);
-            }
-
-            return response()->json(['user' => $user]);
-        } catch (JWTException $e) {
-            return response()->json(['error' => 'Invalid token'], 400);
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 404);
         }
+
+        return response()->json([
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'group' => $user->group, // ✅ Ensure group is returned
+            'opd_id' => $user->opd_id, // ✅ Include OPD if needed
+        ]);
+    } catch (TokenExpiredException $e) {
+        return response()->json(['error' => 'Token has expired'], 401);
+    } catch (TokenInvalidException $e) {
+        return response()->json(['error' => 'Token is invalid'], 401);
+    } catch (JWTException $e) {
+        return response()->json(['error' => 'Token is missing'], 401);
     }
+}
+
 
 
     public function logout()
