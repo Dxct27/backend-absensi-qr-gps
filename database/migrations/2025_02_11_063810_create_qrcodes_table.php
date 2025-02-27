@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('qrcodes', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('opd_id')->constrained('opds')->onDelete('cascade');
+            $table->string('opd_id'); // Ensure it's a string
+            $table->foreign('opd_id')->references('id')->on('opds')->onDelete('cascade');
             $table->string('name')->nullable();
             $table->string('value')->unique();
             $table->double('latitude')->nullable();

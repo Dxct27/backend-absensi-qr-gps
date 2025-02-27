@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -13,43 +12,24 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
 
 class User extends Authenticatable implements JWTSubject
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasUlids;
-    use HasApiTokens;
-    use HasProfilePhoto;    
-    use HasFactory; 
-    use Notifiable;
+    use HasUlids, HasApiTokens, HasProfilePhoto, HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'nip',
         'name',
         'email',
         'password',
+        'google_id', 
+        'avatar',    
         'group',
         'opd_id',
-        'profile_photo_path',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -60,22 +40,22 @@ class User extends Authenticatable implements JWTSubject
 
     public static $groups = ['user', 'admin', 'superadmin'];
 
-    final public function getIsUserAttribute(): bool
+    public function getIsUserAttribute(): bool
     {
         return $this->group === 'user';
     }
 
-    final public function getIsAdminAttribute(): bool
+    public function getIsAdminAttribute(): bool
     {
         return $this->group === 'admin' || $this->isSuperadmin;
     }
 
-    final public function getIsSuperadminAttribute(): bool
+    public function getIsSuperadminAttribute(): bool
     {
         return $this->group === 'superadmin';
     }
 
-    final public function getIsNotAdminAttribute(): bool
+    public function getIsNotAdminAttribute(): bool
     {
         return !$this->isAdmin;
     }

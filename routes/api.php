@@ -1,29 +1,26 @@
 <?php
-
-use App\Http\Controllers\AuthController;
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\JWTAuthController;
 use App\Http\Controllers\OpdController;
 use App\Http\Controllers\QrcodeController;
 use App\Http\Controllers\AttendanceController;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+Route::get('/auth/google', [JWTAuthController::class, 'redirectToGoogle']);
+Route::get('/auth/google/callback', [JWTAuthController::class, 'handleGoogleCallback']);
 
-Route::apiResource('/qrcode', QrcodeController::class);
-Route::apiResource('/opd', OpdController::class);
-Route::apiResource('/attendance', AttendanceController::class);
-
-// Route::post('/auth/register', [AuthController::class, 'register']);
-// Route::post('/auth/login', [AuthController::class, 'login']);
-// Route::post('/auth/logout', [AuthController::class, 'logout']);
-
+// Public Routes
 Route::post('/auth/register', [JWTAuthController::class, 'register']);
 Route::post('/auth/login', [JWTAuthController::class, 'login']);
-Route::post('/auth/logout', [JWTAuthController::class, 'logout']);
 
-Route::get('/post', function() {
-    return 'test';
+// Protected Routes - Require Token
+Route::middleware(['jwt.auth'])->group(function () {
+    Route::post('/auth/logout', [JWTAuthController::class, 'logout']);
+    Route::get('/user', [JWTAuthController::class, 'getUser']); // Fix the /api/user route
+
+    Route::apiResource('/qrcode', QrcodeController::class);
+    Route::apiResource('/opd', OpdController::class);
+    Route::apiResource('/attendance', AttendanceController::class);
 });
+
+
+

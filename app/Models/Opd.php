@@ -8,8 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 class Opd extends Model
 {
     use HasFactory;
-    
-    protected $fillable = [
-        'name',
-    ];
+
+    protected $fillable = ['id', 'name'];
+
+    public $incrementing = false;
+    protected $keyType = 'string';
 }
+

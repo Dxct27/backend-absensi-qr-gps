@@ -26,7 +26,20 @@ return [
     |
     */
 
-    'env' => env('APP_ENV', 'production'),
+    'env' => env('APP_ENV', 'local'),
+
+    'app_url' => env('APP_ENV') === 'ngrok'
+        ? env('APP_URL_NGROK')
+        : (env('APP_ENV') === 'production' ? env('APP_URL_PRODUCTION') : env('APP_URL_LOCAL')),
+
+    'frontend_url' => env('APP_ENV') === 'ngrok'
+        ? env('FRONTEND_URL_NGROK')
+        : (env('APP_ENV') === 'production' ? env('FRONTEND_URL_PRODUCTION') : env('FRONTEND_URL_LOCAL')),
+
+    'google_redirect_uri' => env('APP_ENV') === 'ngrok'
+        ? env('GOOGLE_REDIRECT_URI_NGROK')
+        : (env('APP_ENV') === 'production' ? env('GOOGLE_REDIRECT_URI_PRODUCTION') : env('GOOGLE_REDIRECT_URI_LOCAL')),
+
 
     /*
     |--------------------------------------------------------------------------

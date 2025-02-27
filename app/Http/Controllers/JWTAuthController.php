@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Laravel\Socialite\Facades\Socialite;
 
 class JWTAuthController extends Controller
 {
@@ -21,7 +22,7 @@ class JWTAuthController extends Controller
             'opd_id' => 'required|exists:opds,id',
         ]);
 
-        if($validator->fails()){
+        if ($validator->fails()) {
             return response()->json($validator->errors()->toJson(), 400);
         }
 
@@ -30,12 +31,12 @@ class JWTAuthController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'opd_id' => $request->opd_id
+            'opd_id' => $request->opd_id,
         ]);
 
         $token = JWTAuth::fromUser($user);
 
-        return response()->json(compact('user','token'), 201);
+        return response()->json(compact('user', 'token'), 201);
     }
 
     public function login(Request $request)
@@ -43,40 +44,77 @@ class JWTAuthController extends Controller
         $credentials = $request->only('email', 'password');
 
         try {
-            if (! $token = JWTAuth::attempt($credentials)) {
+            if (!$token = JWTAuth::attempt($credentials)) {
                 return response()->json(['error' => 'Invalid credentials'], 401);
             }
 
             $user = auth()->user();
-
-            // (optional) Attach the role to the token.
-            // $token = JWTAuth::claims(['role' => $user->role])->fromUser($user);
-
-            return response()->json(compact('token'));
+            return response()->json(compact('user', 'token'));
         } catch (JWTException $e) {
             return response()->json(['error' => 'Could not create token'], 500);
         }
     }
 
-    // Get authenticated user
     public function getUser()
     {
         try {
-            if (! $user = JWTAuth::parseToken()->authenticate()) {
+            $user = JWTAuth::parseToken()->authenticate();
+
+            if (!$user) {
                 return response()->json(['error' => 'User not found'], 404);
             }
+
+            return response()->json(['user' => $user]);
         } catch (JWTException $e) {
             return response()->json(['error' => 'Invalid token'], 400);
         }
-
-        return response()->json(compact('user'));
     }
 
-    // User logout
+
     public function logout()
     {
         JWTAuth::invalidate(JWTAuth::getToken());
-
         return response()->json(['message' => 'Successfully logged out']);
     }
+
+    // Google OAuth Authentication
+    public function redirectToGoogle()
+    {
+        return Socialite::driver('google')->redirect();
+    }
+
+    public function handleGoogleCallback()
+    {
+        $frontendUrl = config('app.frontend_url');
+        try {
+            $googleUser = Socialite::driver('google')->stateless()->user();
+            
+            \Log::info("Google User Retrieved: ", [
+                'id' => $googleUser->getId(),
+                'email' => $googleUser->getEmail(),
+            ]);
+
+            $user = User::updateOrCreate(
+                ['email' => $googleUser->getEmail()],
+                [
+                    'name' => $googleUser->getName(),
+                    'google_id' => $googleUser->getId(),
+                    'avatar' => $googleUser->getAvatar(),
+                    'password' => null,
+                    ]
+            );
+            
+            \Log::info("User Updated or Created: ", ['user_id' => $user->id]);
+            
+            $token = JWTAuth::fromUser($user);
+
+            \Log::info("JWT Token Generated: ", ['token' => $token]);
+
+            return redirect("$frontendUrl/auth/google/callback?token=$token");
+        } catch (\Exception $e) {
+            \Log::error("Google Login Failed: " . $e->getMessage());
+            return redirect("$frontendUrl/clipboard")->with('error', 'Google login failed.');
+        }
+    }
+
 }

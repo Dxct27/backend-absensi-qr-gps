@@ -7,20 +7,19 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use App\Http\Controllers\Controller;
-use Illuminate\Validation\Rules\Password;
+use Laravel\Socialite\Facades\Socialite;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'nip' => 'required|string|max:255|unique:users',
+            'nip' => 'nullable|string|max:255|unique:users',
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()],
-            // 'group' => 'required|string|in:' . implode(',', User::$groups), 
+            'password' => ['nullable', 'confirmed', Password::min(8)->mixedCase()->numbers()],
             'opd_id' => 'required|exists:opds,id',
         ]);
 
@@ -32,8 +31,7 @@ class AuthController extends Controller
             'nip' => $request->nip,
             'name' => $request->name,
             'email' => $request->email,
-            'password' => Hash::make($request->password),
-            // 'group' => $request->group,
+            'password' => $request->password ? Hash::make($request->password) : null,
             'opd_id' => $request->opd_id,
         ]);
 
@@ -51,27 +49,63 @@ class AuthController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $user = User::where('email', $request->email)->first();
+        $credentials = $request->only('email', 'password');
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$token = JWTAuth::attempt($credentials)) {
             return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
-        $token = $user->createToken('api-token')->plainTextToken;
-
-        return response()->json(['token' => $token, 'user' => $user], 200); // Return token and user data
+        return response()->json([
+            'token' => $token,
+            'user' => Auth::user(),
+        ], 200);
     }
-
-
-    public function logout(Request $request)
+    public function redirectToGoogle()
     {
-        $request->user()->currentAccessToken()->delete(); 
-
-        return response()->json(['message' => 'Logged out successfully'], 200);
+        return Socialite::driver('google')->redirect();
     }
 
-    public function user(Request $request)
+    public function handleGoogleCallback()
     {
-        return $request->user(); 
+        try {
+            $googleUser = Socialite::driver('google')->stateless()->user();
+
+            $user = User::updateOrCreate(
+                ['email' => $googleUser->getEmail()],
+                [
+                    'name' => $googleUser->getName(),
+                    'google_id' => $googleUser->getId(),
+                    'avatar' => $googleUser->getAvatar(),
+                    'password' => null,
+                ]
+            );
+
+            $token = JWTAuth::fromUser($user);
+
+            return response()->json([
+                'token' => $token,
+                'user' => $user,
+                'group' => $user->group, // Include user group
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Google authentication failed.'], 500);
+        }
     }
+
+
+    public function logout()
+    {
+        try {
+            JWTAuth::invalidate(JWTAuth::getToken());
+            return response()->json(['message' => 'Logged out successfully'], 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to logout'], 500);
+        }
+    }
+
+    public function user()
+    {
+        return response()->json(Auth::user());
+    }
+
 }
