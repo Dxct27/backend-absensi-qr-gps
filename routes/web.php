@@ -2,11 +2,10 @@
 
 use Illuminate\Support\Facades\Route;
 use Laravel\Socialite\Facades\Socialite;
-use App\Http\Controllers\JWTAuthController;
+use App\Http\Controllers\AuthController; // ✅ Use AuthController instead
 
-Route::get('/auth/google', [JWTAuthController::class, 'redirectToGoogle']);
-Route::get('/auth/google/callback', [JWTAuthController::class, 'handleGoogleCallback']);
-
+Route::get('/auth/google', [AuthController::class, 'redirectToGoogle']); // ✅ Update to AuthController
+Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback']); // ✅ Update to AuthController
 
 Route::get('/', function () {
     return view('welcome');

@@ -19,8 +19,8 @@ class User extends Authenticatable implements JWTSubject
         'name',
         'email',
         'password',
-        'google_id', 
-        'avatar',    
+        'google_id',
+        'avatar',
         'group',
         'opd_id',
     ];
@@ -60,7 +60,7 @@ class User extends Authenticatable implements JWTSubject
         return !$this->isAdmin;
     }
 
-    public function opd() 
+    public function opd()
     {
         return $this->belongsTo(Opd::class);
     }
@@ -79,4 +79,12 @@ class User extends Authenticatable implements JWTSubject
     {
         return [];
     }
+
+    public function setPasswordAttribute($value)
+    {
+        if (!$this->password) { // Only allow setting if password is null
+            $this->attributes['password'] = bcrypt($value);
+        }
+    }
+
 }

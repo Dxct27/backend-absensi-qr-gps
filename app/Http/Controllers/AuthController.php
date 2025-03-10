@@ -67,6 +67,7 @@ class AuthController extends Controller
 
     public function handleGoogleCallback()
     {
+        $frontendUrl = config('app.frontend_url');
         try {
             $googleUser = Socialite::driver('google')->stateless()->user();
 
@@ -76,21 +77,26 @@ class AuthController extends Controller
                     'name' => $googleUser->getName(),
                     'google_id' => $googleUser->getId(),
                     'avatar' => $googleUser->getAvatar(),
-                    'password' => null,
+                    'password' => null, // Initially null
                 ]
             );
+            
+            \Log::info("User Updated or Created: ", ['user_id' => $user->id]);
 
+            // Generate JWT Token
             $token = JWTAuth::fromUser($user);
+            
+            \Log::info("JWT Token Generated: ", ['token' => $token]);
 
-            return response()->json([
-                'token' => $token,
-                'user' => $user,
-                'group' => $user->group, // Include user group
-            ], 200);
+            // Redirect back to frontend with token
+            return redirect()->away("$frontendUrl/auth/google/callback?token=$token");
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Google authentication failed.'], 500);
+            \Log::error("Google Login Failed: " . $e->getMessage());
+            return redirect()->away("$frontendUrl/auth/google/callback?error=Google authentication failed");
         }
     }
+
+
 
 
     public function logout()
@@ -98,6 +104,7 @@ class AuthController extends Controller
         try {
             JWTAuth::invalidate(JWTAuth::getToken());
             return response()->json(['message' => 'Logged out successfully'], 200);
+
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to logout'], 500);
         }
@@ -106,6 +113,28 @@ class AuthController extends Controller
     public function user()
     {
         return response()->json(Auth::user());
+    }
+
+    public function setPassword(Request $request)
+    {
+        $user = Auth::user(); // Get the authenticated user
+
+        if (!$user) {
+            return response()->json(['error' => 'User not authenticated'], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        return response()->json(['message' => 'Password set successfully'], 200);
     }
 
 }
