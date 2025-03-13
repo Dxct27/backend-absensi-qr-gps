@@ -41,5 +41,11 @@ return [
         'redirect' => config('app.google_redirect_uri'),
     ],
 
+    'yahoo' => [
+        'client_id' => env('YAHOO_CLIENT_ID'),
+        'client_secret' => env('YAHOO_CLIENT_SECRET'),
+        'redirect' => config('app.yahoo_redirect_uri'),
+    ],
+
 
 ];

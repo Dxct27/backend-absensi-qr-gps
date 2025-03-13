@@ -21,7 +21,7 @@ class Attendance extends Model
         'longitude',
         'status',
         'notes',
-        'attachments',
+        'attachment',
     ];
 
     protected function casts(): array

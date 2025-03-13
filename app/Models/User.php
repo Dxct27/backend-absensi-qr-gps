@@ -20,10 +20,13 @@ class User extends Authenticatable implements JWTSubject
         'email',
         'password',
         'google_id',
+        'yahoo_id',
         'avatar',
+        'yahoo_avatar',
         'group',
-        'opd_id',
+        'opd_id'
     ];
+
 
     protected $hidden = [
         'password',

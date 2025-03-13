@@ -52,7 +52,6 @@ class AttendanceController extends Controller
 
         return response()->json(['data' => $attendanceRecords]);
     }
-    
 
     public function store(Request $request)
     {
@@ -60,7 +59,7 @@ class AttendanceController extends Controller
             $validatedData = $request->validate([
                 'user_id' => 'required|exists:users,id',
                 'opd_id' => 'required|exists:opds,id',
-                'qrcode_value' => 'nullable|string',
+                'qrcode_value' => 'required|string', // QR Code is now mandatory
                 'date' => [
                     'required',
                     'date_format:Y-m-d',
@@ -73,34 +72,19 @@ class AttendanceController extends Controller
                 'timestamp' => 'required|date_format:H:i:s',
                 'latitude' => 'nullable|numeric',
                 'longitude' => 'nullable|numeric',
-                'notes' => 'nullable|string',
-                'status' => 'required|in:hadir,sakit,izin,dinas luar',
-                'attachments' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
             ]);
         } catch (ValidationException $e) {
             Log::error('Validation failed', ['errors' => $e->errors()]);
             return response()->json(['errors' => $e->errors()], 422);
         }
 
-        if (in_array($validatedData['status'], ['sakit', 'izin', 'dinas luar'])) {
-            $validatedData['qrcode_id'] = null;
-            $attendance = Attendance::create($validatedData);
-            return response()->json([
-                'message' => 'Leave request recorded successfully',
-                'data' => $attendance
-            ], 201);
-        }
-
-        if (!$validatedData['qrcode_value']) {
-            return response()->json(['error' => 'QR Code is required for attendance'], 400);
-        }
-
+        // Validate QR Code
         $qrCode = \App\Models\Qrcode::where('value', $validatedData['qrcode_value'])->first();
-
         if (!$qrCode) {
             return response()->json(['error' => 'Invalid QR Code'], 400);
         }
 
+        // Prevent duplicate attendance
         $existingAttendance = Attendance::where('user_id', $validatedData['user_id'])
             ->where('qrcode_id', $qrCode->id)
             ->first();
@@ -109,11 +93,14 @@ class AttendanceController extends Controller
             return response()->json(['message' => 'Anda sudah melakukan absensi dengan QR ini sebelumnya!'], 400);
         }
 
+        // Assign QR Code ID
         $validatedData['qrcode_id'] = $qrCode->id;
-        unset($validatedData['qrcode_value']);
+        unset($validatedData['qrcode_value']); // No need to store QR value, only its ID
 
+        // Default status
         $status = 'hadir';
 
+        // Check location
         if (!isset($validatedData['latitude']) || !isset($validatedData['longitude'])) {
             $status = 'lokasi tidak ditemukan';
         } else {
@@ -130,6 +117,7 @@ class AttendanceController extends Controller
             }
         }
 
+        // Validate time range
         $scanTime = Carbon::createFromFormat('H:i:s', $validatedData['timestamp']);
         $startTime = Carbon::parse($qrCode->waktu_awal);
         $endTime = Carbon::parse($qrCode->waktu_akhir);
@@ -142,8 +130,10 @@ class AttendanceController extends Controller
             $status = 'terlambat';
         }
 
+        // Assign final status
         $validatedData['status'] = $status;
 
+        // Store attendance
         $attendance = Attendance::create($validatedData);
 
         return response()->json(['message' => 'Attendance recorded successfully', 'data' => $attendance], 201);
@@ -170,18 +160,18 @@ class AttendanceController extends Controller
                 'longitude' => 'nullable|numeric',
                 'status' => 'sometimes|string',
                 'notes' => 'nullable|string',
-                'attachments' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+                'attachment' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
             ]);
         } catch (ValidationException $e) {
             return response()->json(['errors' => $e->errors()], 422);
         }
 
-        if ($request->hasFile('attachments')) {
-            if ($attendance->attachments) {
-                Storage::disk('public')->delete($attendance->attachments);
+        if ($request->hasFile('attachment')) {
+            if ($attendance->attachment) {
+                Storage::disk('public')->delete($attendance->attachment);
             }
-            $path = $request->file('attachments')->store('attendance_attachments', 'public');
-            $validatedData['attachments'] = $path;
+            $path = $request->file('attachment')->store('attendance_attachments', 'public');
+            $validatedData['attachment'] = $path;
         }
 
         $attendance->update($validatedData);
@@ -190,8 +180,8 @@ class AttendanceController extends Controller
 
     public function destroy(Attendance $attendance)
     {
-        if ($attendance->attachments) {
-            Storage::disk('public')->delete($attendance->attachments);
+        if ($attendance->attachment) {
+            Storage::disk('public')->delete($attendance->attachment);
         }
 
         $attendance->delete();
@@ -214,4 +204,35 @@ class AttendanceController extends Controller
 
         return $distance <= $radius;
     }
+
+    public function storeLeaveRequest(Request $request)
+    {
+        try {
+            $validatedData = $request->validate([
+                'user_id' => 'required|exists:users,id',
+                'opd_id' => 'required|exists:opds,id',
+                'date' => 'required|date_format:Y-m-d',
+                'status' => 'required|in:sakit,izin,dinas luar,absent',
+                'notes' => 'nullable|string',
+                'attachment' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048', // 2MB max file
+            ]);
+        } catch (ValidationException $e) {
+            Log::error('Leave request validation failed', ['errors' => $e->errors()]);
+            return response()->json(['errors' => $e->errors()], 422);
+        }
+
+        // Handle file upload
+        if ($request->hasFile('attachment')) {
+            $validatedData['attachment'] = $request->file('attachment')->store('leave_attachments', 'public');
+        }
+
+        // Store leave request
+        $leaveRequest = Attendance::create($validatedData);
+
+        return response()->json([
+            'message' => 'Leave request recorded successfully',
+            'data' => $leaveRequest
+        ], 201);
+    }
+
 }

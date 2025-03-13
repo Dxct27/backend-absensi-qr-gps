@@ -40,6 +40,10 @@ return [
         ? env('GOOGLE_REDIRECT_URI_NGROK')
         : (env('APP_ENV') === 'production' ? env('GOOGLE_REDIRECT_URI_PRODUCTION') : env('GOOGLE_REDIRECT_URI_LOCAL')),
 
+    'yahoo_redirect_uri' => env('APP_ENV') === 'ngrok'
+        ? env('YAHOO_REDIRECT_URI_NGROK')
+        : (env('APP_ENV') === 'production' ? env('YAHOO_REDIRECT_URI_PRODUCTION') : env('YAHOO_REDIRECT_URI_LOCAL')),
+
 
     /*
     |--------------------------------------------------------------------------

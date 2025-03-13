@@ -77,15 +77,15 @@ class AuthController extends Controller
                     'name' => $googleUser->getName(),
                     'google_id' => $googleUser->getId(),
                     'avatar' => $googleUser->getAvatar(),
-                    'password' => null, // Initially null
                 ]
             );
-            
+
             \Log::info("User Updated or Created: ", ['user_id' => $user->id]);
+            \Log::info("User password: ", ['password' => $user->password]);
 
             // Generate JWT Token
             $token = JWTAuth::fromUser($user);
-            
+
             \Log::info("JWT Token Generated: ", ['token' => $token]);
 
             // Redirect back to frontend with token
@@ -96,8 +96,42 @@ class AuthController extends Controller
         }
     }
 
+    public function redirectToYahoo()
+    {
+        return Socialite::driver('yahoo')->redirect();
+    }
 
+    public function handleYahooCallback()
+    {
+        $frontendUrl = config('app.frontend_url');
 
+        try {
+            $yahooUser = Socialite::driver('yahoo')->stateless()->user();
+
+            $user = User::updateOrCreate(
+                ['email' => $yahooUser->getEmail()],
+                [
+                    'name' => $yahooUser->getName(),
+                    'yahoo_id' => $yahooUser->getId(), // Reuse the field for Yahoo ID
+                    'yahoo_avatar' => $yahooUser->getAvatar(),
+                    'password' => null, // Initially null
+                ]
+            );
+
+            \Log::info("User Updated or Created: ", ['user_id' => $user->id]);
+
+            // Generate JWT Token
+            $token = JWTAuth::fromUser($user);
+
+            \Log::info("JWT Token Generated: ", ['token' => $token]);
+
+            // Redirect back to frontend with token
+            return redirect()->away("$frontendUrl/auth/yahoo/callback?token=$token");
+        } catch (\Exception $e) {
+            \Log::error("Yahoo Login Failed: " . $e->getMessage());
+            return redirect()->away("$frontendUrl/auth/yahoo/callback?error=Yahoo authentication failed");
+        }
+    }
 
     public function logout()
     {
@@ -112,12 +146,16 @@ class AuthController extends Controller
 
     public function user()
     {
-        return response()->json(Auth::user());
+        return response()->json([
+            'user' => Auth::user(),
+            'has_password' => is_null(Auth::user()->password) ? false : true,
+            ]
+        );
     }
 
     public function setPassword(Request $request)
     {
-        $user = Auth::user(); // Get the authenticated user
+        $user = Auth::user();
 
         if (!$user) {
             return response()->json(['error' => 'User not authenticated'], 401);
