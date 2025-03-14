@@ -68,33 +68,40 @@ class AuthController extends Controller
     public function handleGoogleCallback()
     {
         $frontendUrl = config('app.frontend_url');
+
         try {
             $googleUser = Socialite::driver('google')->stateless()->user();
 
-            $user = User::updateOrCreate(
-                ['email' => $googleUser->getEmail()],
-                [
-                    'name' => $googleUser->getName(),
+            $user = User::where('email', $googleUser->getEmail())->first();
+
+            if ($user) {
+                $user->update([
                     'google_id' => $googleUser->getId(),
                     'avatar' => $googleUser->getAvatar(),
-                ]
-            );
+                ]);
+            } else {
+                $user = User::create([
+                    'name' => $googleUser->getName(),
+                    'email' => $googleUser->getEmail(),
+                    'google_id' => $googleUser->getId(),
+                    'avatar' => $googleUser->getAvatar(),
+                ]);
+            }
 
-            \Log::info("User Updated or Created: ", ['user_id' => $user->id]);
+            \Log::info("User Found or Created: ", ['user_id' => $user->id]);
             \Log::info("User password: ", ['password' => $user->password]);
 
-            // Generate JWT Token
             $token = JWTAuth::fromUser($user);
 
             \Log::info("JWT Token Generated: ", ['token' => $token]);
 
-            // Redirect back to frontend with token
             return redirect()->away("$frontendUrl/auth/google/callback?token=$token");
         } catch (\Exception $e) {
             \Log::error("Google Login Failed: " . $e->getMessage());
             return redirect()->away("$frontendUrl/auth/google/callback?error=Google authentication failed");
         }
     }
+
 
     public function redirectToYahoo()
     {
@@ -108,24 +115,28 @@ class AuthController extends Controller
         try {
             $yahooUser = Socialite::driver('yahoo')->stateless()->user();
 
-            $user = User::updateOrCreate(
-                ['email' => $yahooUser->getEmail()],
-                [
-                    'name' => $yahooUser->getName(),
-                    'yahoo_id' => $yahooUser->getId(), // Reuse the field for Yahoo ID
+            $user = User::where('email', $yahooUser->getEmail())->first();
+
+            if ($user) {
+                $user->update([
+                    'yahoo_id' => $yahooUser->getId(),
                     'yahoo_avatar' => $yahooUser->getAvatar(),
-                    'password' => null, // Initially null
-                ]
-            );
+                ]);
+            } else {
+                $user = User::create([
+                    'name' => $yahooUser->getName(),
+                    'email' => $yahooUser->getEmail(),
+                    'yahoo_id' => $yahooUser->getId(),
+                    'yahoo_avatar' => $yahooUser->getAvatar(),
+                ]);
+            }
 
-            \Log::info("User Updated or Created: ", ['user_id' => $user->id]);
+            \Log::info("User Found or Created: ", ['user_id' => $user->id]);
 
-            // Generate JWT Token
             $token = JWTAuth::fromUser($user);
 
             \Log::info("JWT Token Generated: ", ['token' => $token]);
 
-            // Redirect back to frontend with token
             return redirect()->away("$frontendUrl/auth/yahoo/callback?token=$token");
         } catch (\Exception $e) {
             \Log::error("Yahoo Login Failed: " . $e->getMessage());
@@ -146,9 +157,10 @@ class AuthController extends Controller
 
     public function user()
     {
-        return response()->json([
-            'user' => Auth::user(),
-            'has_password' => is_null(Auth::user()->password) ? false : true,
+        return response()->json(
+            [
+                'user' => Auth::user(),
+                'has_password' => is_null(Auth::user()->password) ? false : true,
             ]
         );
     }

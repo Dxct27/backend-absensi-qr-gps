@@ -14,11 +14,12 @@ class AttendanceController extends Controller
 {
     public function index(Request $request)
     {
-        $adminUser = auth()->user(); // Get logged-in admin
-        $opdId = $adminUser->opd_id; // Get OPD ID of the admin
+        $adminUser = auth()->user();
+        $opdId = $adminUser->opd_id;
 
         $date = $request->input('date');
-        $filterType = $request->input('filter', 'daily'); // Default to daily
+        $filterType = $request->input('filter', 'daily');
+        $type = $request->input('type', 'daily'); 
 
         if (!$date) {
             return response()->json(['error' => 'Date is required'], 400);
@@ -26,7 +27,10 @@ class AttendanceController extends Controller
 
         $query = Attendance::whereHas('user', function ($q) use ($opdId) {
             $q->where('opd_id', $opdId);
-        })->with('user:id,name,nip'); // Eager load user name and NIP
+        })->with('user:id,name,nip')
+            ->whereHas('qrCode', function ($q) use ($type) {
+                $q->where('type', $type); 
+            });
 
         switch ($filterType) {
             case 'daily':
@@ -59,7 +63,7 @@ class AttendanceController extends Controller
             $validatedData = $request->validate([
                 'user_id' => 'required|exists:users,id',
                 'opd_id' => 'required|exists:opds,id',
-                'qrcode_value' => 'required|string', // QR Code is now mandatory
+                'qrcode_value' => 'required|string',
                 'date' => [
                     'required',
                     'date_format:Y-m-d',
@@ -78,13 +82,11 @@ class AttendanceController extends Controller
             return response()->json(['errors' => $e->errors()], 422);
         }
 
-        // Validate QR Code
         $qrCode = \App\Models\Qrcode::where('value', $validatedData['qrcode_value'])->first();
         if (!$qrCode) {
             return response()->json(['error' => 'Invalid QR Code'], 400);
         }
 
-        // Prevent duplicate attendance
         $existingAttendance = Attendance::where('user_id', $validatedData['user_id'])
             ->where('qrcode_id', $qrCode->id)
             ->first();
@@ -93,14 +95,11 @@ class AttendanceController extends Controller
             return response()->json(['message' => 'Anda sudah melakukan absensi dengan QR ini sebelumnya!'], 400);
         }
 
-        // Assign QR Code ID
         $validatedData['qrcode_id'] = $qrCode->id;
-        unset($validatedData['qrcode_value']); // No need to store QR value, only its ID
+        unset($validatedData['qrcode_value']);
 
-        // Default status
         $status = 'hadir';
 
-        // Check location
         if (!isset($validatedData['latitude']) || !isset($validatedData['longitude'])) {
             $status = 'lokasi tidak ditemukan';
         } else {
@@ -113,33 +112,29 @@ class AttendanceController extends Controller
             );
 
             if (!$isWithinRadius) {
-                $status = 'lokasi di luar radius';
+                return response()->json(['error' => 'Anda berada di luar lokasi valid absen.'], 400);
             }
         }
 
-        // Validate time range
         $scanTime = Carbon::createFromFormat('H:i:s', $validatedData['timestamp']);
         $startTime = Carbon::parse($qrCode->waktu_awal);
         $endTime = Carbon::parse($qrCode->waktu_akhir);
 
         if ($scanTime->lessThan($startTime)) {
-            return response()->json(['error' => 'Attendance too early, not allowed yet.'], 400);
+            return response()->json(['error' => 'Absen masih belum dibuka.'], 400);
         }
 
         if ($scanTime->greaterThan($endTime)) {
-            $status = 'terlambat';
+            $status = 'hadir';
+            return response()->json(['message' => 'Anda absen terlambat.'], 201);
         }
 
-        // Assign final status
         $validatedData['status'] = $status;
 
-        // Store attendance
         $attendance = Attendance::create($validatedData);
 
         return response()->json(['message' => 'Attendance recorded successfully', 'data' => $attendance], 201);
     }
-
-
 
     public function show(Attendance $attendance)
     {
@@ -190,7 +185,7 @@ class AttendanceController extends Controller
 
     private function isWithinRadius($userLat, $userLng, $allowedLat, $allowedLng, $radius)
     {
-        $earthRadius = 6371000; // Radius of Earth in meters
+        $earthRadius = 6371000;
 
         $latDelta = deg2rad($userLat - $allowedLat);
         $lngDelta = deg2rad($userLng - $allowedLng);
@@ -221,12 +216,10 @@ class AttendanceController extends Controller
             return response()->json(['errors' => $e->errors()], 422);
         }
 
-        // Handle file upload
         if ($request->hasFile('attachment')) {
             $validatedData['attachment'] = $request->file('attachment')->store('leave_attachments', 'public');
         }
 
-        // Store leave request
         $leaveRequest = Attendance::create($validatedData);
 
         return response()->json([

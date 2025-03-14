@@ -19,6 +19,8 @@ class Qrcode extends Model
         'radius',
         'waktu_awal',
         'waktu_akhir',
+        'type',
+        'event_id',
     ];
 
     protected $casts = [

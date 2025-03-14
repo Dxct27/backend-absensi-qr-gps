@@ -10,7 +10,6 @@ class Attendance extends Model
 {
     use HasFactory;
     use HasTimestamps;
-
     protected $fillable = [
         'user_id',
         'opd_id',
@@ -22,7 +21,14 @@ class Attendance extends Model
         'status',
         'notes',
         'attachment',
+        'type',
+        'event_id'
     ];
+
+    public function specialEvent()
+    {
+        return $this->belongsTo(SpecialEvent::class, 'event_id');
+    }
 
     protected function casts(): array
     {
