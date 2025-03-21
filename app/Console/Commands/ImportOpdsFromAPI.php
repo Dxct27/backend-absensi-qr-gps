@@ -14,18 +14,16 @@ class ImportOpdsFromAPI extends Command
     public function handle()
     {
         $apiUrl = 'https://api-splp.layanan.go.id/simpeg/1.0/opd?';
-        $apiKey = env('SPLP_API_KEY');
+        $apiKey = config('app.api_keys.splp');
 
-        
         $response = Http::withHeaders([
             'Accept' => 'application/json',
-        ])->get($apiUrl, [
-            'apikey' => $apiKey
-        ]);
+            'ApiKey' => $apiKey,
+        ])->get($apiUrl);
 
         if ($response->failed()) {
-
             $this->error('Failed to fetch OPDs from API.');
+            $this->error('API Response: ' . $response->body());
             return;
         }
 
@@ -41,15 +39,15 @@ class ImportOpdsFromAPI extends Command
             $nama = $opdData['nama'] ?? null;
 
             if (!$kodeOpd || !$nama) {
+                $this->warn("Skipping OPD due to missing data: " . json_encode($opdData));
                 continue;
             }
 
             Opd::updateOrCreate(
-                ['id' => $kodeOpd], // Now uses kode_opd as the primary key
+                ['id' => $kodeOpd],
                 ['name' => $nama]
             );
         }
-
 
         $this->info('OPDs imported successfully!');
     }

@@ -9,21 +9,31 @@ use App\Models\Opd;
 
 class ImportUsersFromAPI extends Command
 {
-    protected $signature = 'users:import';
-    protected $description = 'Import users dynamically for each OPD from the external API';
+    protected $signature = 'users:import {opdId?}';
+    protected $description = 'Import users dynamically for each OPD or a specific OPD from the external API';
 
     public function handle()
     {
         $apiBaseUrl = 'https://api-splp.layanan.go.id/simpeg/1.0/pns_unker?';
-        $apiKey = env('SPLP_API_KEY');
+        $apiKey = config('app.api_keys.splp');
         $limit = 10000;
+        $opdId = $this->argument('opdId');
 
-        $opds = Opd::all();
-
-        if ($opds->isEmpty()) {
-            $this->error('No OPDs found.');
-            return;
+        if ($opdId) {
+            $opds = Opd::where('id', $opdId)->get();
+            if ($opds->isEmpty()) {
+                $this->error("No OPD found with ID: {$opdId}");
+                return;
+            }
+        } else {
+            $opds = Opd::all();
+            if ($opds->isEmpty()) {
+                $this->error('No OPDs found.');
+                return;
+            }
         }
+
+        $counter = 0;
 
         foreach ($opds as $opd) {
             $this->info("Importing users for OPD ID: {$opd->id}");
@@ -34,23 +44,21 @@ class ImportUsersFromAPI extends Command
             while ($hasMoreData) {
                 $response = Http::withHeaders([
                     'Accept' => 'application/json',
+                    'ApiKey' => $apiKey,
                 ])->get($apiBaseUrl, [
-                    'apikey' => $apiKey,
-                    'kode_unker' => $opd->id,
-                    'offset' => $offset,
-                    'limit' => $limit,
-                ]);
+                            'kode_unker' => $opd->id,
+                            'offset' => $offset,
+                            'limit' => $limit,
+                        ]);
 
-                // ✅ Check if API request failed
                 if ($response->failed()) {
                     $this->error("Failed to fetch users for OPD ID: {$opd->id}");
                     $this->error("API Response: " . $response->body());
 
-                    // ✅ Handle authentication errors (error_code 1304)
                     $errorData = $response->json();
                     if (isset($errorData['error_code']) && $errorData['error_code'] == 1304) {
                         $this->error("Authentication failed! Please check your API key.");
-                        return; // ✅ Stop execution to avoid further failures
+                        return;
                     }
 
                     break;
@@ -58,7 +66,6 @@ class ImportUsersFromAPI extends Command
 
                 $data = $response->json();
 
-                // ✅ Validate API response format
                 if (!isset($data['result']) || !is_array($data['result'])) {
                     $this->error("Invalid API response format for OPD ID: {$opd->id}");
                     break;
@@ -98,6 +105,13 @@ class ImportUsersFromAPI extends Command
                 }
 
                 $offset += $limit;
+            }
+
+            $counter++;
+
+            if (!$opdId && $counter % 10 === 0) {
+                $this->info("Processed 10 OPDs. Waiting 1 minute before continuing...");
+                sleep(60);
             }
         }
 

@@ -14,6 +14,7 @@ class Qrcode extends Model
         'opd_id',
         'name',
         'value',
+        'url',
         'latitude',
         'longitude',
         'radius',

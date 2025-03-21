@@ -13,7 +13,7 @@ class QrcodeController extends Controller
     {
         $type = $request->query('type');
 
-        $query = QRCode::query();
+        $query = QRCode::with('opd');
 
         if ($type) {
             $query->where('type', $type);
@@ -23,8 +23,6 @@ class QrcodeController extends Controller
 
         return response()->json($qrcodes);
     }
-
-
 
     public function store(Request $request)
     {
@@ -59,7 +57,10 @@ class QrcodeController extends Controller
             now()->timestamp
         ]);
 
-        $qrcode->value = hash('sha256', $stringToHash);
+        $hashedData = hash('sha256', $stringToHash);
+        $qrcode->value = $hashedData;
+        $qrcode->url = $qrcode->url = "/scan?code={$hashedData}";
+
         $qrcode->save();
 
         return response()->json($qrcode, 201);
@@ -105,9 +106,11 @@ class QrcodeController extends Controller
             now()->timestamp
         ]);
 
-        $qrcode->value = hash('sha256', $stringToHash);
-        $qrcode->save();
+        $hashedData = hash('sha256', $stringToHash);
+        $qrcode->value = $hashedData;
+        $qrcode->url = "/scan?code={$hashedData}";
 
+        $qrcode->save();
         return response()->json($qrcode);
     }
 
