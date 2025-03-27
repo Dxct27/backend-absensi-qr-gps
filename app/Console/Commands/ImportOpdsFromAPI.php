@@ -8,6 +8,7 @@ use App\Models\Opd;
 
 class ImportOpdsFromAPI extends Command
 {
+    
     protected $signature = 'opds:import';
     protected $description = 'Import OPD IDs and names from the external API';
 
