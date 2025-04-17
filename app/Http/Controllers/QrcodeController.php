@@ -11,9 +11,14 @@ class QrcodeController extends Controller
 {
     public function index(Request $request)
     {
+        $user = auth()->user();
         $type = $request->query('type');
 
         $query = QRCode::with('opd');
+
+        if ($user->group !== 'superadmin') {
+            $query->where('opd_id', $user->opd_id);
+        }
 
         if ($type) {
             $query->where('type', $type);
@@ -23,6 +28,7 @@ class QrcodeController extends Controller
 
         return response()->json($qrcodes);
     }
+
 
     public function store(Request $request)
     {

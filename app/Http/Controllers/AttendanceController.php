@@ -73,7 +73,6 @@ class AttendanceController extends Controller
                 'user_id' => 'required|exists:users,id',
                 'opd_id' => 'required|exists:opds,id',
                 'qrcode_value' => 'required|string',
-                'date' => 'required|date_format:Y-m-d',
                 'timestamp' => 'required|date_format:H:i:s',
                 'latitude' => 'nullable|numeric',
                 'longitude' => 'nullable|numeric',
@@ -93,6 +92,9 @@ class AttendanceController extends Controller
         if ($userOpdId !== $qrCode->opd_id) {
             return response()->json(['error' => 'Anda tidak dapat melakukan absensi menggunakan QR Code dari OPD lain.'], 400);
         }
+        
+        $attendanceDate = Carbon::parse($qrCode->waktu_awal)->toDateString();
+        $validatedData['date'] = $attendanceDate;
 
         $leaveExists = Attendance::where('user_id', $validatedData['user_id'])
             ->whereDate('date', $validatedData['date'])
@@ -112,7 +114,7 @@ class AttendanceController extends Controller
             return response()->json(['error' => 'Anda tidak dapat absen harian karena sedang dinas luar.'], 400);
         }
 
-        // Prevent attendance same QR code but still can for one day
+        // Prevent attendance same QR code but still can for one day :: Future dev, add special event
         // $existingAttendance = Attendance::where('user_id', $validatedData['user_id'])
         //     ->where('qrcode_id', $qrCode->id)
         //     ->first();
@@ -158,12 +160,12 @@ class AttendanceController extends Controller
             return response()->json(['error' => 'Absen masih belum dibuka.'], 400);
         }
 
+        $validatedData['status'] = 'hadir';
+        $attendance = Attendance::create($validatedData);
+
         if ($scanTime->greaterThan($endTime)) {
             return response()->json(['message' => 'Anda absen terlambat.'], 201);
         }
-
-        $validatedData['status'] = 'hadir';
-        $attendance = Attendance::create($validatedData);
 
         return response()->json(['message' => 'Absensi berhasil dicatat.', 'data' => $attendance], 201);
     }
@@ -215,7 +217,6 @@ class AttendanceController extends Controller
         $attendance->delete();
         return response()->json(null, 204);
     }
-
 
     public function storeLeaveRequest(Request $request)
     {

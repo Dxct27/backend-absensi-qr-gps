@@ -66,4 +66,18 @@ class SuperAdminController extends Controller
 
         return response()->json(['message' => 'User OPD updated successfully']);
     }
+
+    public function getAttendance(Request $request)
+    {
+        $query = Attendance::with(['user', 'opd', 'qrcode', 'specialEvent']);
+        $perPage = $request->input('limit', 15);
+        return response()->json($query->paginate($perPage));
+    }
+    
+    public function deleteAttendance($id)
+    {
+        Attendance::findOrFail($id)->delete();
+        return response()->json(['message' => 'Attendance deleted successfully']);
+    }
+
 }

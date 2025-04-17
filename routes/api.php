@@ -28,12 +28,15 @@ Route::middleware('jwt.auth')->group(function () {
     Route::post('/leave-request', [AttendanceController::class, 'storeLeaveRequest']);
 
     Route::get('/users', [UserController::class, 'index']);
-
     Route::middleware(SuperAdminMiddleware::class)->group(function () {
         Route::get('/superadmin/summary', [SuperAdminController::class, 'dashboardSummary']);
         Route::get('/superadmin/users', [SuperAdminController::class, 'getUsers']);
         Route::put('/superadmin/users/{id}/group', [SuperAdminController::class, 'updateUserRole']);
         Route::put('/superadmin/users/{id}/opd', [SuperAdminController::class, 'updateUserOpd']);
         Route::delete('/superadmin/users/{id}', [SuperAdminController::class, 'deleteUser']);
+
+        Route::get('/superadmin/attendance', [SuperAdminController::class, 'getAttendance']);
+        Route::delete('/superadmin/attendance/{id}', [SuperAdminController::class, 'deleteAttendance']);
     });
+
 });
