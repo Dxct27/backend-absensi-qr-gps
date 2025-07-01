@@ -103,7 +103,6 @@ class AuthController extends Controller
         }
     }
 
-
     public function redirectToYahoo()
     {
         return Socialite::driver('yahoo')->redirect();
@@ -186,6 +185,16 @@ class AuthController extends Controller
         $user->save();
 
         return response()->json(['message' => 'Password set successfully'], 200);
+    }
+
+    public function refreshToken() {
+        try {
+            $newToken = JWTAuth::refresh();
+            \Log::info("JWT Token Refreshed: ", ['token' => $newToken]);
+            return response()->json(['token' => $newToken]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Token refresh failed'], 401);
+        }
     }
 
 }

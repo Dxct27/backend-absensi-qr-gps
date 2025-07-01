@@ -69,7 +69,7 @@ class SuperAdminController extends Controller
 
     public function getAttendance(Request $request)
     {
-        $query = Attendance::with(['user', 'opd', 'qrcode', 'specialEvent']);
+        $query = Attendance::with(['user', 'opd', 'qrcode', 'qrcode.specialEvent.category']);
         $perPage = $request->input('limit', 15);
         return response()->json($query->paginate($perPage));
     }

@@ -21,22 +21,11 @@ class Attendance extends Model
         'status',
         'notes',
         'attachment',
-        'type',
-        'event_id'
     ];
-
-    public function specialEvent()
-    {
-        return $this->belongsTo(SpecialEvent::class, 'event_id');
-    }
-
-    protected function casts(): array
-    {
-        return [
-            'date' => 'datetime:Y-m-d',
-            'timestamp' => 'datetime:H:i:s',
-        ];
-    }
+    protected $casts = [
+        'date' => 'datetime:Y-m-d',
+        'timestamp' => 'datetime:H:i:s',
+    ];
 
     public function user()
     {

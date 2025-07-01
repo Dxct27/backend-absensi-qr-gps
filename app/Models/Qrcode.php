@@ -28,10 +28,22 @@ class Qrcode extends Model
         'waktu_awal' => 'datetime',
         'waktu_akhir' => 'datetime',
     ];
+    
+    protected $hidden = ['created_at', 'updated_at'];
 
     public function opd()
     {
         return $this->belongsTo(Opd::class);
+    }
+
+    public function specialEvent()
+    {
+        return $this->belongsTo(SpecialEvent::class, 'event_id');
+    }
+
+    public function attendances()
+    {
+        return $this->hasMany(Attendance::class);
     }
 
     public function getLatLngAttribute(): array|null

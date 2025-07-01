@@ -41,6 +41,9 @@ class UserController extends Controller
                 ->select('users.*');
         }
 
-        return response()->json($query->get());
+        return response()->json([
+            'count' => $query->count(),
+            'data' => $query->get()
+        ]);
     }
 }

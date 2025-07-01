@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\SpecialEventCategoryController;
+use App\Http\Controllers\SpecialEventController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\OpdController;
@@ -17,6 +19,7 @@ Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
 
 Route::middleware('jwt.auth')->group(function () {
+    Route::post('/auth/refresh', [AuthController::class, 'refreshToken']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/auth/set-password', [AuthController::class, 'setPassword']);
@@ -26,6 +29,10 @@ Route::middleware('jwt.auth')->group(function () {
     Route::apiResource('/attendance', AttendanceController::class);
     Route::get('/qrcodes/{qrId}/attendances', [AttendanceController::class, 'getAttendanceByQR']);
     Route::post('/leave-request', [AttendanceController::class, 'storeLeaveRequest']);
+    
+    Route::apiResource('/special-events', SpecialEventController::class);
+    Route::apiResource('/special-event-categories', SpecialEventCategoryController::class);
+    Route::get('/special-events/attendance/history', [AttendanceController::class, 'userSpecialEventHistory']);
 
     Route::get('/users', [UserController::class, 'index']);
     Route::middleware(SuperAdminMiddleware::class)->group(function () {

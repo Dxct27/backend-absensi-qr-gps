@@ -29,7 +29,6 @@ class QrcodeController extends Controller
         return response()->json($qrcodes);
     }
 
-
     public function store(Request $request)
     {
         try {
@@ -42,7 +41,7 @@ class QrcodeController extends Controller
                 'waktu_awal' => 'nullable|date_format:Y-m-d H:i:s',
                 'waktu_akhir' => 'nullable|date_format:Y-m-d H:i:s|after_or_equal:waktu_awal',
                 'type' => 'required|in:daily,special_event',
-                'event_id' => 'nullable|required_if:type,special_event|exists:events,id',
+                'event_id' => 'nullable|required_if:type,special_event|exists:special_events,id',
             ]);
         } catch (ValidationException $e) {
             return response()->json(['errors' => $e->errors()], 422);
@@ -62,7 +61,7 @@ class QrcodeController extends Controller
             $qrcode->event_id ?? '',
             now()->timestamp
         ]);
-
+        // \Log::info($stringToHash);
         $hashedData = hash('sha256', $stringToHash);
         $qrcode->value = $hashedData;
         $qrcode->url = $qrcode->url = "/scan?code={$hashedData}";
@@ -71,7 +70,6 @@ class QrcodeController extends Controller
 
         return response()->json($qrcode, 201);
     }
-
 
     public function show(Qrcode $qrcode)
     {
@@ -91,7 +89,7 @@ class QrcodeController extends Controller
                 'waktu_awal' => 'nullable|date_format:Y-m-d H:i:s',
                 'waktu_akhir' => 'nullable|date_format:Y-m-d H:i:s|after_or_equal:waktu_awal',
                 'type' => 'required|in:daily,special_event',
-                'event_id' => 'nullable|required_if:type,special_event|exists:events,id',
+                'event_id' => 'nullable|required_if:type,special_event|exists:special_events,id',
             ]);
         } catch (ValidationException $e) {
             return response()->json(['errors' => $e->errors()], 422);
